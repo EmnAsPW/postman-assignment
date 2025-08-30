@@ -1,0 +1,19 @@
+{
+  "name": "postman-assignment",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node .\\report.js",
+    "dev": "node .\\report.js",
+    "test": "node .\\report.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "newman": "^6.2.1",
+    "newman-reporter-htmlextra": "^1.23.1"
+  }
+}

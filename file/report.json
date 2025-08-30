@@ -1,0 +1,958 @@
+{
+  "info": {
+    "name": "Dmoney API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection implementing 10 test scenarios (positive & negative), with folder structure"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://dmoney.roadtocareer.net" },
+    { "key": "adminEmail", "value": "admin@roadtocareer.net" },
+    { "key": "adminPass", "value": "1234" },
+    { "key": "systemAccount", "value": "SYSTEM" },
+    { "key": "agentPhone", "value": "" },
+    { "key": "cust1Phone", "value": "" },
+    { "key": "cust2Phone", "value": "" },
+    { "key": "merchantPhone", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "agentToken", "value": "" },
+    { "key": "cust1Token", "value": "" },
+    { "key": "cust2Token", "value": "" },
+    { "key": "merchantToken", "value": "" },
+    { "key": "lastTrnxId", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Generate a random 5-digit number for phone suffix",
+          "if (!pm.variables.get('phoneSuffix')) {",
+          "  pm.variables.set('phoneSuffix', Math.floor(Math.random()*90000 + 10000));",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Admin Setup",
+      "item": [
+        {
+          "name": "Admin Login (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] },
+            "body": {
+              "raw": JSON.stringify({
+                email: "{{adminEmail}}",
+                password: "{{adminPass}}"
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.token, 'Token must be returned').to.exist;",
+                  "pm.collectionVariables.set('adminToken', json.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Login (Negative - wrong password)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/user/login", "host": ["{{baseUrl}}"], "path": ["user", "login"] },
+            "body": {
+              "raw": JSON.stringify({
+                email: "{{adminEmail}}",
+                password: "wrongpass"
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 401 or 400', () => pm.response.to.have.status(401) || pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.error || json.message, 'Error message must exist').to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Agent (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "Agent",
+                email: "agent{{phoneSuffix}}@test.com",
+                phone_number: "017{{phoneSuffix}}",
+                role: "Agent",
+                password: "1234"
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 or 200', () => pm.response.to.have.status(201) || pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.phone_number).to.exist;",
+                  "pm.collectionVariables.set('agentPhone', json.phone_number);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Agent (Negative - duplicate)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "Agent",
+                email: "agent{{phoneSuffix}}@test.com",
+                phone_number: "{{agentPhone}}",
+                role: "Agent",
+                password: "1234"
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', () => pm.response.to.have.status(400));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.error || json.message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Customer 1 (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "Customer1",
+                email: "cust1{{phoneSuffix}}@test.com",
+                phone_number: "018{{phoneSuffix}}",
+                role: "Customer",
+                password: "1234"
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200-201', () => pm.response.code === 200 || pm.response.code === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.phone_number).to.exist;",
+                  "pm.collectionVariables.set('cust1Phone', json.phone_number);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Customer 1 (Negative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "Customer1",
+                email: "",
+                phone_number: "{{cust1Phone}}",
+                role: "Customer",
+                password: ""
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 400', () => pm.response.to.have.status(400));",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Customer 2 (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "Customer2",
+                email: "cust2{{phoneSuffix}}@test.com",
+                phone_number: "019{{phoneSuffix}}",
+                role: "Customer",
+                password: "1234"
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200 or 201', () => pm.response.status === 200 || pm.response.status === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.phone_number).to.exist;",
+                  "pm.collectionVariables.set('cust2Phone', json.phone_number);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Customer 2 (Negative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "Customer2",
+                email: "duplicate@test.com",
+                phone_number: "",
+                role: "Customer",
+                password: ""
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 400 or error', () => pm.response.code === 400);",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Merchant (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "Merchant",
+                email: "merchant{{phoneSuffix}}@test.com",
+                phone_number: "016{{phoneSuffix}}",
+                role: "Merchant",
+                password: "1234"
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200 or 201', () => pm.response.status === 200 || pm.response.status === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.phone_number).to.exist;",
+                  "pm.collectionVariables.set('merchantPhone', json.phone_number);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Merchant (Negative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/user/create", "host": ["{{baseUrl}}"], "path": ["user", "create"] },
+            "body": {
+              "raw": JSON.stringify({
+                name: "",
+                email": "",
+                phone_number": "",
+                role": "Merchant",
+                password": ""
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 400', () => pm.response.to.have.status(400));",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. System → Agent Deposit",
+      "item": [
+        {
+          "name": "Deposit Money to Agent (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/deposit", "host": ["{{baseUrl}}"], "path": ["transaction", "deposit"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{systemAccount}}",
+                toAc: "{{agentPhone}}",
+                amount: Math.floor(Math.random()* (10000 - 10 + 1) + 10)
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200-201', () => pm.response.code === 200 || pm.response.code === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.transactionId).to.exist;",
+                  "pm.collectionVariables.set('lastTrnxId', json.transactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deposit Money to Agent (Negative - invalid amount)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/deposit", "host": ["{{baseUrl}}"], "path": ["transaction", "deposit"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{systemAccount}}",
+                toAc: "{{agentPhone}}",
+                amount: 5
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Agent → Customer Deposit",
+      "item": [
+        {
+          "name": "Deposit from Agent to Cust1 (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/deposit", "host": ["{{baseUrl}}"], "path": ["transaction", "deposit"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{agentPhone}}",
+                toAc: "{{cust1Phone}}",
+                amount: Math.floor(Math.random()* (5000 - 10 + 1) + 10)
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200-201', () => pm.response.code === 200 || pm.response.code === 201);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.transactionId).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deposit from Agent to Cust1 (Negative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/deposit", "host": ["{{baseUrl}}"], "path": ["transaction", "deposit"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{agentPhone}}",
+                toAc: "{{cust1Phone}}",
+                amount: 0
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Check Agent Balance",
+      "item": [
+        {
+          "name": "Check Agent Balance (Positive)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/account/balance?phone={{agentPhone}}", "host": ["{{baseUrl}}"], "path": ["account", "balance"], "query": [{ "key": "phone", "value": "{{agentPhone}}" }] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.balance).to.be.a('number');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Agent Balance (Negative - unauthorized)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/account/balance?phone={{agentPhone}}", "host": ["{{baseUrl}}"], "path": ["account", "balance"], "query": [{ "key": "phone", "value": "{{agentPhone}}" }] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Customer → Customer Transfer",
+      "item": [
+        {
+          "name": "Cust1 → Cust2 Transfer (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{cust1Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/send", "host": ["{{baseUrl}}"], "path": ["transaction", "send"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{cust1Phone}}",
+                toAc: "{{cust2Phone}}",
+                amount: Math.floor(Math.random()* (3000 - 10 + 1) + 10)
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.transactionId).to.exist;",
+                  "pm.collectionVariables.set('lastTrnxId', json.transactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cust1 → Cust2 Transfer (Negative - insufficient funds)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{cust1Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/send", "host": ["{{baseUrl}}"], "path": ["transaction", "send"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{cust1Phone}}",
+                toAc: "{{cust2Phone}}",
+                amount: 999999
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 or 402', () => pm.response.code === 400 || pm.response.code === 402);",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Customer → Agent Withdrawal",
+      "item": [
+        {
+          "name": "Cust2 → Agent Withdrawal (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/send", "host": ["{{baseUrl}}"], "path": ["transaction", "send"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{cust2Phone}}",
+                toAc: "{{agentPhone}}",
+                amount: Math.floor(Math.random()* (10000 - 10 + 1) + 10)
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.transactionId).to.exist;",
+                  "pm.collectionVariables.set('lastTrnxId', json.transactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cust2 → Agent Withdrawal (Negative - invalid amount)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/send", "host": ["{{baseUrl}}"], "path": ["transaction", "send"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{cust2Phone}}",
+                toAc: "{{agentPhone}}",
+                amount: 0
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.code === 400);",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Check Customer Balance & Transaction (Cust2)",
+      "item": [
+        {
+          "name": "Check Cust2 Balance (Positive)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/account/balance?phone={{cust2Phone}}", "host": ["{{baseUrl}}"], "path": ["account", "balance"], "query": [{ "key": "phone", "value": "{{cust2Phone}}" }] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.balance).to.be.a('number');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Cust2 Balance (Negative - unauthorized)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/account/balance?phone={{cust2Phone}}", "host": ["{{baseUrl}}], \"path\": [\"account\", \"balance\"], \"query\": [{ \"key\": \"phone\", \"value\": \"{{cust2Phone}}\" }]" },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                  ],
+                  "type": "text/javascript"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Check Cust2 Transaction Statement by trnxId (Positive)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transaction/detail?trnxId={{lastTrnxId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["transaction", "detail"],
+              "query": [{ "key": "trnxId", "value": "{{lastTrnxId}}"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.transactionId).to.eql(pm.collectionVariables.get('lastTrnxId'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Cust2 Transaction Statement (Negative – invalid trnxId)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/transaction/detail?trnxId=invalid123",
+              "host": ["{{baseUrl}}"],
+              "path": ["transaction", "detail"],
+              "query": [{ "key": "trnxId", "value": "invalid123"}]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 or 404', () => pm.response.code === 400 || pm.response.code === 404);",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Customer2 → Merchant Payment",
+      "item": [
+        {
+          "name": "Payment from Cust2 to Merchant (Positive)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/send", "host": ["{{baseUrl}}"], "path": ["transaction", "send"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{cust2Phone}}",
+                toAc: "{{merchantPhone}}",
+                amount: Math.floor(Math.random()* (2000 - 10 + 1) + 10)
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.code === 200);",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.transactionId).to.exist;",
+                  "pm.collectionVariables.set('lastTrnxId', json.transactionId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payment Cust2 → Merchant (Negative- insufficient funds)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/send", "host": ["{{baseUrl}}"], "path": ["transaction", "send"] },
+            "body": {
+              "raw": JSON.stringify({
+                fromAc: "{{cust2Phone}}",
+                toAc: "{{merchantPhone}}",
+                amount": 999999
+              }),
+              "mode": "raw"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 or 402', () => pm.response.code === 400 || pm.response.code === 402);",
+                  "pm.expect(pm.response.json().error || pm.response.json().message).to.exist;"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Customer2 Checks (Balance & Trnx)",
+      "item": [
+        {
+          "name": "Balance Check by Cust2 (Positive)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{cust2Token}}" }],
+            "url": { "raw": "{{baseUrl}}/account/balance?phone={{cust2Phone}}", "host": ["{{baseUrl}}"], "path": ["account", "balance"], "query": [{ "key": "phone", "value": "{{cust2Phone}}" }] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().balance).to.be.a('number');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transaction Check by Cust2 (Positive)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{cust2Token}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/transaction/detail?trnxId={{lastTrnxId}}", "host": ["{{baseUrl}}"], "path": ["transaction", "detail"], "query": [{ "key": "trnxId", "value": "{{lastTrnxId}}"}] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().transactionId).to.eql(pm.collectionVariables.get('lastTrnxId'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10. Merchant Checks Balance",
+      "item": [
+        {
+          "name": "Merchant Balance (Positive)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{merchantToken}}" }],
+            "url": { "raw": "{{baseUrl}}/account/balance?phone={{merchantPhone}}", "host": ["{{baseUrl}}"], "path": ["account", "balance"], "query": [{ "key": "phone", "value": "{{merchantPhone}}" }] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.expect(pm.response.json().balance).to.be.a('number');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merchant Balance (Negative – unauthorized)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/account/balance?phone={{merchantPhone}}", "host": ["{{baseUrl}}"], "path": ["account", "balance"], "query": [{ "key": "phone", "value": "{{merchantPhone}}"}] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 Unauthorized', () => pm.response.code === 401);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
